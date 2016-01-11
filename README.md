@@ -2,7 +2,7 @@
 
 ## Voraussetzungen
 * Eine [R](https://www.r-project.org)- und am besten eine [R-Studio](https://www.rstudio.com)-Installation
-* Die R Bibiliothek [twitteR](https://cran.r-project.org/web/packages/twitteR/index.html)
+* Die R Bibliothek [twitteR](https://cran.r-project.org/web/packages/twitteR/index.html)
 * Ein mit Telefonnummer verifizierter Twitter Account
 * Eine in diesem Account erstellte Twitter-Application
 * "consumer key" und "consumer secret" dieser Application
