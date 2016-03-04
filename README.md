@@ -20,10 +20,10 @@
 
 ## Tweets suchen mit R
 	# Bibliotheken laden
-	library("twitteR")
-	library("base64enc")
-	library("httr")
-	library("httpuv")
+	library(twitteR)
+	library(base64enc)
+	library(httr)
+	library(httpuv)
 	
 	# Twitter Application authentifizieren
 	consumer_key <- 'hier den consumer key einfügen'
@@ -36,7 +36,7 @@
 	
 ## Tweets in SQLite Datenbank speichern
 	# Bibliotheken laden
-	library("RSQLite")
+	library(RSQLite)
 	
 	# Datenbank mit twitteR registrieren
 	register_sqlite_backend("/Path/to/your/tweets.sqlite")
@@ -45,17 +45,19 @@
 	store_tweets_db(tweets, table_name="tweets")
 	
 	# Tweets aus Datenbank laden
-	tweetsFromDatabase <- load_tweets_db(as.data.frame = FALSE, table_name = "tweets")
+	tweets <- load_tweets_db(as.data.frame = FALSE, table_name = "tweets")
 
 ## Tweets pro Nutzer Diagramm erzeugen mit ggplot2
 	# Bibliotheken laden
-	library("ggplot2")
+	library(dplyr)
+	library(ggplot2)
 	
 	# Tweets pro Nutzer extrahieren und sortieren
 	tweetsDF <- twListToDF(tweets)
-	tweets_per_user <- as.data.frame(table(tweetsDF$screenName))
-	names(tweets_per_user) <- c("User","Tweets")
-	tweets_per_user <- tweets_per_user[order(tweets_per_user$Tweets, decreasing=T), ]
+	tweets_per_user <- tweetsDF %>% 
+	  count(screenName) %>% 
+	  arrange(desc(n)) %>%
+	  rename(User = screenName, Tweets = n)
 	
 	# Die 40 produktivsten Twitter Nutzer in absteigender Reihenfolge
 	# als Balkendiagramm darstellen
@@ -65,13 +67,59 @@
 	 xlab("User") +
 	 ylab("Tweets")
 
-![image](images/tweets-per-user.png)
+![image](images/tweets_per_user.png)
 
 ## Tweets pro Stunde Diagramm erzeugen mit ggplot2
-	ggplot(data=tweetsDF, aes(x=created)) + 
-	  geom_bar(aes(fill=..count..), binwidth=3600) + 
-	  scale_x_datetime("Time") + 
-	  scale_y_continuous("Tweets")
+	 ggplot(data=tweetsDF, aes(x=created)) + 
+	   geom_histogram(aes(fill=..count..), binwidth=3600) + 
+	   guides(fill = "none") +
+	   scale_x_datetime("Time") + 
+	   scale_y_continuous("Tweets")
 	  
-	  
-![image](images/tweets-per-hour.png)	 
+![image](images/tweets_per_hour.png)
+
+## Retweet- und Favorite-Zähler analysieren
+	# Hinzufügen einer Spalte "Score".
+	# Der Score wird als Summe von favoriteCount und retweetCount berechnet. 
+	tweetsDF <- tweetsDF %>% mutate(score = favoriteCount + retweetCount)
+
+	# Damit Retweets nicht mehrfach gewichtet werden, entfernen wir die Retweets.
+	# Leider ist das von TwitteR erzeugte isRetweet Feld unbrauchbar (immer FALSE).
+	# Wir entfernen stattdessen, als akzeptable Annäherung, alle Tweets,
+	# die in text, favoriteCount und retweetCount identisch sind.
+	uniqueTweets <- tweetsDF %>% distinct(text, favoriteCount, retweetCount)
+	
+	# Retweet- und Favorite-Zähler als Scatterplot Diagramm darstellen
+	ggplot(uniqueTweets, aes(favoriteCount, retweetCount)) +
+	   geom_jitter() +
+	   xlab("#Favorites") +
+	   ylab("#Retweets")
+	
+
+![image](images/retweet_favorite_scatterplot.png)
+	
+## Top 10 Tweets als Markdown Tabelle
+	# Bibliotheken laden
+	library(knitr)
+ 
+	# 10 Tweets mit den höchsten Score Werten auswählen
+	top_10_tweets <- uniqueTweets %>% 
+	  select(text, score) %>% 
+	  top_n(10, score) %>% 
+	  arrange(desc(score))
+ 
+	# Markdown Tabelle erzeugen
+	kable(top_10_tweets, format = "markdown")
+	
+|Tweet                                                                                                                                            | Score|
+|:------------------------------------------------------------------------------------------------------------------------------------------------|-----:|
+|Vorschläge für Openness-Checkliste können hier ergänzt oder verbessert werden: https://t.co/xKopRXfT5z #inetbib16 https://t.co/KitSaJ9Npm        |    30|
+|Vorschlag aus dem Schreibworkshop: Lassen sie uns alle zusammen einen Tagungsbericht zur #inetbib16 schreiben. https://t.co/RteqZkyIIY           |    25|
+|Radio SRF (auch so ein totgesagtes Medium...) fasst die aktuelle Debatte um Bibliotheken schön zusammen: https://t.co/CFcjGb06jL #inetbib16      |    21|
+|#inetbib16 Word! Als Bibliothekar/in Selbst nur noch #openaccess publizieren für mehr Offenheit. @felixlohmeier https://t.co/W67EeZVJiN          |    18|
+|RT @felixlohmeier: Vorschläge für Openness-Checkliste können hier ergänzt oder verbessert werden: https://t.co/xKopRXfT5z #inetbib16 https:…     |    17|
+|Ich verstehe nicht, warum Bibliotheksverbünde so viel Arbeit von Ex Libris &amp; OCLC übernehmen. Verzerrt Wettbewerb mit Open Source #inetbib16 |    17|
+|An der Hotelbar (im Bild: Runde einiger #inetbib16 Teilnehmender) fliegt der #Ball heute Abend tief!! https://t.co/gALl2UFosl                    |    16|
+|Die ersten edits in #openness checkliste bei @SlideWiki treffen ein: https://t.co/VYNLKdPLjj. Toll, das wird was! #inetbib16                     |    16|
+|Sehr sehr cool: @felixlohmeier entwirft eine #OpenScience Checkliste interaktiv mit dem Publikum der #inetbib16!                                 |    16|
+|Und hier der Podcast zu meinem Interview auf SRF2: https://t.co/MPZVELeWX8 #inetbib16                                                            |    14|
